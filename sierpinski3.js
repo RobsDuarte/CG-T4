@@ -169,10 +169,7 @@ var fractalScene = (loadedScene, maxLevel = 0, colorLevel = 0) => {
       alert(`${error}`);
       // don't need to return anything => execution goes the normal way
       return [
-        "crystal.json",
-        "Pentagonal_de_Durer.json",
-        "sierpinski3.json",
-        "tree.json",
+	"sierpinski3.json",
       ];
     });
 
