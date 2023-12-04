@@ -1,7 +1,7 @@
 /**
  * @file
  *
- * In this script, you can render a 3d IFS
+ * In this script, you can render a 3D IFS
  * (<a href="https://en.wikipedia.org/wiki/Iterated_function_system">Iterated Function System</a>)
  * that was modeled with the Three.js editor, and exported as a scene JSON. <br>
  * One such example is included in <a href="../sierpinski3/models/sierpinski3.json">sierpinski3.json</a> file.
@@ -9,7 +9,8 @@
  * <p>The <a href="../sierpinski3/mat.html">transformations</a> corresponding to the
  * <a href="https://larryriddle.agnesscott.org/ifs/siertri/siertri.htm">IFS</a>
  * correspond to those objects that have a name starting with "copy". <br>
- * In the example included, there are 4 of these, named "copy1" ... "copy4".</p>
+ * In the 3D {@link https://en.wikipedia.org/wiki/Sierpiński_triangle Sierpiński Gasket}
+ * example (included), there are 4 of these, named "copy1" ... "copy4".</p>
  *
  * <p>Selecting a "Max Level" bigger than 0 in the interface will create recursive
  * copies of these objects, up to the given level, <br>
@@ -26,18 +27,28 @@
  * @see https://dplatz.de/blog/2019/es6-bare-imports.html
  */
 
-import * as THREE from "https://unpkg.com/three@0.148.0/build/three.module.js?module";
-import { OrbitControls } from "https://unpkg.com/three@0.148.0/examples/jsm/controls/OrbitControls.js?module";
-
-//import * as THREE from "three";
-//import { OrbitControls } from "OrbitControls";
+/**
+ * Three.js module.
+ * @external THREE
+ * @see https://threejs.org/docs/#manual/en/introduction/Installation
+ */
+let THREE;
 
 /**
- * Creates a Sierpiński gasket given a json object with
- * four <a href="https://www.qfbox.info/4d/tetrahedron">tetrahedra</a>.
+ * OrbitControls module.
+ * @external OrbitControls
+ * @see https://threejs.org/docs/#examples/en/controls/OrbitControls
+ */
+let OrbitControls;
+
+/**
+ * Creates an IFS (Iterated Function System) fractal given a json object with
+ * n objects (called copy1 ... copyn).
  *
- * <p>The gasket will have 4<sup>mlevel+1</sup> tetrahedra.</p>
+ * <p>The fractal will have n<sup>mlevel+1</sup>objects.</p>
  *
+ * E.g., for a Sierpiński gastket, the objects are just
+ * <a href="https://www.qfbox.info/4d/tetrahedron">tetrahedra</a>.
  * <ul>
  *  <li>4**0 copy1 4**0 copy2 4**0 copy3 4**0 copy4 ... 16 blocks (color level 0)</li>
  *  <li>4**1 copy1 4**1 copy2 4**1 copy3 4**1 copy4 ... 08 blocks (color level 1)</li>
@@ -48,22 +59,22 @@ import { OrbitControls } from "https://unpkg.com/three@0.148.0/examples/jsm/cont
  * @param {THREE.Object3D} loadedScene json object.
  * @param {Number} maxLevel maximum recursion level.
  * @param {Number} colorLevel all objects of level colorLevel will have the same color.
- * @returns {THREE.Object3D} a new scene with a gasket of the given level.
+ * @returns {THREE.Object3D} a new scene with a fractal at the given level.
  * @see https://en.wikipedia.org/wiki/Sierpiński_triangle
  * @see https://threejs.org/docs/#api/en/core/Object3D
  * @see https://www.codingem.com/javascript-clone-object/
  */
-var fractalScene = (loadedScene, maxLevel = 0, colorLevel = 0) => {
+const fractalScene = (loadedScene, maxLevel = 0, colorLevel = 0) => {
   let scene = loadedScene.clone();
 
-  // create an array with the four initial copies
+  // create an array with the n initial copies
   let copies = scene.children.filter(
-    (child) => child.name.slice(0, 20) == "copy"
+    (child) => child.name.slice(0, 4) == "copy"
   );
-  // remove all four copies from the scene
+  // remove all n copies from the scene
   scene.remove(...copies);
-	
-  // initial level with only four copies
+
+  // initial level with only n copies
   let currentLevel = copies.map((copy) => {
     let obj = copy.clone();
     obj.matrixAutoUpdate = false;
@@ -72,16 +83,16 @@ var fractalScene = (loadedScene, maxLevel = 0, colorLevel = 0) => {
 
   for (let level = 1; level <= maxLevel; level++) {
     let nextLevel = [];
-    // create a next level with 4 * currentLevel.length tets
+    // create a next level with n * currentLevel.length objects
     for (let copy of copies) {
-      // for each obj in this level generate four more
+      // for each obj in this level generate n more,
       // using either its matrix or its original's copy matrix
       // for coloring objs
       nextLevel = nextLevel.concat(
         currentLevel.map((obj) => {
           let newObj;
           if (level == colorLevel) {
-            // last color level -> copy color (4**(colorLevel) tets)
+            // last color level -> copy color (n**(colorLevel) objects)
             newObj = copy.clone();
             // obj.matrix * newObj.matrix
             newObj.matrix.premultiply(obj.matrix);
@@ -106,28 +117,30 @@ var fractalScene = (loadedScene, maxLevel = 0, colorLevel = 0) => {
 };
 
 /**
- * Self invoked asynchronous anonymous function for reading a json file,
- * created by the Three.js editor, and rendering a 3D Sierpinski gasket.
+ * Function for reading a json file,
+ * created by the Three.js editor, and rendering a 3D IFS fractal.
  *
- * @function {@link anonymous_async_function}
+ * @async
  * @see https://threejs.org/docs/#examples/en/controls/OrbitControls
  * @see https://threejs.org/docs/#api/en/renderers/WebGLRenderer
  * @see https://en.threejs-university.com
  */
-(async function () {
+async function mainEntrance() {
   const canvas = document.querySelector("#theCanvas");
 
   /**
-   * <p>Promise for returning an array with all file names in directory './models'.</p>
+   * <p>Promise for returning an array with all file names in directory './models' on the server.</p>
    *
    * <p>Calls a php script via ajax, since Javascript doesn't have access to the filesystem.</p>
    * Please, note that php runs on the server, and javascript on the browser.
-   * @type {Promise<Array<String>>}
+   * @return {Promise<Array<String>>}
+   * @global
+   * @function
    * @see <a href="/cwdc/6-php/readFiles.php">files</a>
    * @see https://stackoverflow.com/questions/31274329/get-list-of-filenames-in-folder-with-javascript
    * @see https://api.jquery.com/jquery.ajax/
    */
-  var readFileNames = new Promise((resolve, reject) => {
+  let readFileNames = new Promise((resolve, reject) => {
     $.ajax({
       type: "GET",
       url: "/cwdc/6-php/readFiles_.php",
@@ -151,6 +164,18 @@ var fractalScene = (loadedScene, maxLevel = 0, colorLevel = 0) => {
       });
   });
 
+  /**
+   * A loader for loading a JSON resource in the JSON Object/Scene format.
+   * @class ObjectLoader
+   * @memberof external:THREE
+   * @see https://threejs.org/docs/#api/en/loaders/ObjectLoader
+   */
+
+  /**
+   * ObjectLoader object.
+   * @var {external:THREE.ObjectLoader}
+   * @global
+   */
   const loader = new THREE.ObjectLoader();
 
   const queryString = window.location.search;
@@ -159,7 +184,8 @@ var fractalScene = (loadedScene, maxLevel = 0, colorLevel = 0) => {
 
   /**
    * Array holding model file names to create scenes.
-   * @type {Array<String>}
+   * @var {Array<String>} modelFileName
+   * @global
    */
   let modelFileName = await readFileNames
     .then((arr) => {
@@ -169,35 +195,82 @@ var fractalScene = (loadedScene, maxLevel = 0, colorLevel = 0) => {
       alert(`${error}`);
       // don't need to return anything => execution goes the normal way
       return [
-	"sierpinski3.json",
+        "crystal.json",
+        "Pentagonal_de_Durer.json",
+        "sierpinski3.json",
+        "tree.json",
       ];
     });
 
   let response = await fetch(`./models/${jfile}`);
+
+  /**
+   * Javascript object holding the current loaded model ready to be parsed.
+   * @var {Object}
+   * @global
+   * @see https://developer.mozilla.org/en-US/docs/Web/API/Response/json
+   */
   let model = await response.json();
 
-  var loadedScene = loader.parse(model);
+  /**
+   * Current loaded model parsed from a json file.
+   * @var {Object3D}
+   * @global
+   * @see https://threejs.org/docs/#api/en/loaders/ObjectLoader.parse
+   */
+  let loadedScene = loader.parse(model);
 
-  var aspect = canvas.clientWidth / canvas.clientHeight;
+  /**
+   * Canvas aspect ratio.
+   * @var {Number}
+   * @global
+   */
+  let aspect = canvas.clientWidth / canvas.clientHeight;
 
-  // The WebGL renderer displays your beautifully crafted scenes using WebGL.
+  /**
+   * The WebGL renderer displays your beautifully crafted scenes using WebGL.
+   * @class WebGLRenderer
+   * @memberof external:THREE
+   * @see https://threejs.org/docs/#api/en/renderers/WebGLRenderer
+   */
+
+  /**
+   * WebGLRenderer object.
+   * @var {external:THREE.WebGLRenderer}
+   * @global
+   */
   const renderer = new THREE.WebGLRenderer({
     canvas: canvas,
     antialias: true,
   });
   renderer.shadowMap.enabled = true;
 
+  /**
+   * Camera that uses perspective projection.
+   * @class PerspectiveCamera
+   * @memberof external:THREE
+   * @see https://threejs.org/docs/#api/en/cameras/PerspectiveCamera
+   */
+
+  /**
+   * PerspectiveCamera object.
+   * @var {external:THREE.PerspectiveCamera}
+   * @global
+   */
   const camera = new THREE.PerspectiveCamera(45, aspect, 1, 10000);
   handleWindowResize();
 
   /**
-   * Current texture index.
-   * @type {Number}
+   * Current scene index.
+   * @var {Number}
+   * @global
    */
-  var sceneCnt = 0;
+  let sceneCnt = 0;
 
   /**
    * Select next scene.
+   * @async
+   * @global
    */
   async function nextScene() {
     sceneCnt = (sceneCnt + 1) % modelFileName.length;
@@ -211,6 +284,8 @@ var fractalScene = (loadedScene, maxLevel = 0, colorLevel = 0) => {
 
   /**
    * Select previous scene.
+   * @async
+   * @global
    */
   async function previousScene() {
     --sceneCnt;
@@ -224,7 +299,10 @@ var fractalScene = (loadedScene, maxLevel = 0, colorLevel = 0) => {
   window.previousScene = previousScene;
 
   /**
-   * Screen events.
+   * <p>Fires when the document view (window) has been resized.</p>
+   * Also resizes the canvas and viewport.
+   * @callback handleWindowResize
+   * @see https://developer.mozilla.org/en-US/docs/Web/API/Window/resize_event
    */
   function handleWindowResize() {
     let h = window.innerHeight;
@@ -239,6 +317,15 @@ var fractalScene = (loadedScene, maxLevel = 0, colorLevel = 0) => {
     camera.updateProjectionMatrix();
   }
 
+  /**
+   * <p>Appends an event listener for events whose type attribute value is resize.</p>
+   * <p>The {@link handleWindowResize callback} argument sets the callback
+   * that will be invoked when the event is dispatched.</p>
+   * @param {Event} event the document view is resized.
+   * @param {callback} function function to run when the event occurs.
+   * @param {Boolean} useCapture handler is executed in the bubbling or capturing phase.
+   * @event resize - executed when the window is resized.
+   */
   window.addEventListener("resize", handleWindowResize, false);
 
   /**
@@ -299,9 +386,18 @@ var fractalScene = (loadedScene, maxLevel = 0, colorLevel = 0) => {
     }
 
     // listen to events on every checkbox of the radio buttons
-    matches = document.querySelectorAll(`input[name=${name}]`);
+    let matches = document.querySelectorAll(`input[name=${name}]`);
     matches.forEach((elem) => {
-      elem.addEventListener("click", (event) => {
+      /**
+       * <p>Appends an event listener for events whose type attribute value is change.
+       * The callback argument sets the callback that will be invoked when
+       * the event is dispatched.</p>
+       *
+       * @event change - executed when any
+       * {@link renderScene clevel} &lt;input radio&gt;'s checkbox is checked (but not when unchecked).
+       * @see https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/change_event
+       */
+      elem.addEventListener("change", (event) => {
         // global variable to receive the clicked button
         clevel = +event.target.value;
         if (cbfunc) {
@@ -323,7 +419,7 @@ var fractalScene = (loadedScene, maxLevel = 0, colorLevel = 0) => {
    * @global
    * @function
    */
-  var renderScene = () => {
+  const renderScene = () => {
     // global variables and arguments
     scene = fractalScene(loadedScene, mlevel, clevel);
     renderer.render(scene, camera);
@@ -336,7 +432,7 @@ var fractalScene = (loadedScene, maxLevel = 0, colorLevel = 0) => {
    * @global
    * @var
    */
-  var mlevel = +$("input[type='radio'][name='mlevel']:checked").val();
+  let mlevel = +$("input[type='radio'][name='mlevel']:checked").val();
 
   /**
    * Color level being used, which has the same range as the selected maximum level.
@@ -344,22 +440,31 @@ var fractalScene = (loadedScene, maxLevel = 0, colorLevel = 0) => {
    * @global
    * @var
    */
-  var clevel = createRadioBtns({ nbtn: mlevel, cbfunc: renderScene });
+  let clevel = createRadioBtns({ nbtn: mlevel, cbfunc: renderScene });
 
   /**
-   * Current scene with the Sierpinski gasket at the current maximum level.
+   * Current scene with the fractal at the current maximum level.
    *
    * @global
    * @var
    */
-  var scene = fractalScene(loadedScene, mlevel, clevel);
+  let scene = fractalScene(loadedScene, mlevel, clevel);
 
   $("#animate").html(`Animate (${scene.children.length - 4})`);
 
   // listen to events on every checkbox of the radio buttons
-  var matches = document.querySelectorAll('input[name="mlevel"]');
+  let matches = document.querySelectorAll('input[name="mlevel"]');
   matches.forEach((elem) => {
-    elem.addEventListener("click", (event) => {
+    /**
+     * <p>Appends an event listener for events whose type attribute value is change.
+     * The callback argument sets the callback that will be invoked when
+     * the event is dispatched.</p>
+     *
+     * @event change - executed when any
+     * {@link renderScene mlevel} &lt;input radio&gt;'s checkbox is checked (but not when unchecked).
+     * @see https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/change_event
+     */
+    elem.addEventListener("change", (event) => {
       mlevel = +event.target.value;
       clevel = createRadioBtns({
         nbtn: mlevel,
@@ -373,12 +478,33 @@ var fractalScene = (loadedScene, maxLevel = 0, colorLevel = 0) => {
   // listen to events on every checkbox of the radio buttons
   matches = document.querySelectorAll('input[name="animate"]');
   matches.forEach((elem) => {
-    elem.addEventListener("click", (event) => {
+    /**
+     * <p>Appends an event listener for events whose type attribute value is change.
+     * The callback argument sets the callback that will be invoked when
+     * the event is dispatched.</p>
+     *
+     * @event change - executed when any
+     * {@link https://threejs.org/docs/#examples/en/controls/OrbitControls.autoRotate animate}
+     * &lt;input radio&gt;'s checkbox is checked (but not when unchecked).
+     * @see https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/change_event
+     */
+    elem.addEventListener("change", (event) => {
       controls.autoRotate = !!+event.target.value;
     });
   });
 
-  // Orbit controls allow the camera to orbit around a target.
+  /**
+   * Orbit controls allow the camera to orbit around a target.
+   * @class OrbitControls
+   * @memberof external:OrbitControls
+   * @see https://threejs.org/docs/#examples/en/controls/OrbitControls
+   */
+
+  /**
+   * OrbitControls object.
+   * @var {external:OrbitControls.OrbitControls}
+   * @global
+   */
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.screenSpacePanning = true;
   controls.autoRotate = !!+$(
@@ -393,8 +519,15 @@ var fractalScene = (loadedScene, maxLevel = 0, colorLevel = 0) => {
   controls.minDistance = 2.0;
   controls.maxDistance = 15.0;
   controls.listenToKeyEvents(window);
+  /**
+   * <p>Appends an event listener for events whose type attribute value is change.
+   * The callback argument sets the callback that will be invoked when
+   * the event is dispatched.</p>
+   *
+   * @event change - fires when the camera has been transformed by the controls.
+   * @see https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/change_event
+   */
   controls.addEventListener("change", () => {
-    // Fires when the camera has been transformed by the controls.
     if (!controls.autoRotate) renderer.render(scene, camera);
   });
 
@@ -421,5 +554,62 @@ var fractalScene = (loadedScene, maxLevel = 0, colorLevel = 0) => {
       renderer.render(scene, camera);
     }
   });
-})();
+}
 
+/**
+ * <p>Loads the theejs module and the {@link mainEntrance application}.</p>
+ * Unfortunately, importmap is only supported by Safari version 16.4 and later.<br>
+ * Since I still use macOS Catalina, my Safari version is 15.6.1, which obliges me
+ * to conditionally and dynamically load the threejs module.
+ *
+ * <p>userAgent for Safari, Firefox, Chrome and Opera:</p>
+ * <ul>
+ * <li>"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15" </li>
+ * <li>"Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:120.0) Gecko/20100101 Firefox/120.0"</li>
+ * <li>"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"</li>
+ * <li>"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36 OPR/105.0.0.0"</li>
+ * </ul>
+ * @param {Event} event an object has loaded.
+ * @param {callback} function function to run when the event occurs.
+ * @event load
+ * @see https://developer.mozilla.org/en-US/docs/Web/API/Window/load_event
+ * @see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/import
+ * @see https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script/type/importmap
+ * @see https://developer.mozilla.org/en-US/docs/Web/API/Navigator/userAgent
+ * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Browser_detection_using_the_user_agent
+ */
+window.addEventListener("load", (event) => {
+  const { userAgent } = navigator;
+  let oldSafari = false;
+  if (userAgent.includes("Safari/") && !userAgent.includes("Chrome/")) {
+    let version = userAgent.split("Version/")[1];
+    version = version.split("Safari")[0];
+    console.log(`Safari v${version}`);
+    if (version < "16.4") {
+      oldSafari = true;
+      import(
+        "https://unpkg.com/three@0.148.0/build/three.module.js?module"
+      ).then((module) => {
+        THREE = module;
+        import(
+          "https://unpkg.com/three@0.148.0/examples/jsm/controls/OrbitControls.js?module"
+        ).then((module) => {
+          ({ OrbitControls } = module);
+          mainEntrance();
+          return;
+        });
+      });
+    }
+  }
+
+  // any other case use importmap
+  if (!oldSafari) {
+    import("three").then((module) => {
+      THREE = module;
+      import("OrbitControls").then((module) => {
+        ({ OrbitControls } = module);
+        mainEntrance();
+      });
+    });
+  }
+});
