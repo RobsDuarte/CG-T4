@@ -26,8 +26,8 @@
  * @see https://dplatz.de/blog/2019/es6-bare-imports.html
  */
 
-import * as THREE from "https://unpkg.com/three@0.148.0/build/three.module.js";
-import { OrbitControls } from "https://unpkg.com/three@0.148.0/examples/jsm/controls/OrbitControls.js";
+import * as THREE from "https://unpkg.com/three@0.148.0/build/three.module.js?module";
+import { OrbitControls } from "https://unpkg.com/three@0.148.0/examples/jsm/controls/OrbitControls.js?module";
 
 //import * as THREE from "three";
 //import { OrbitControls } from "OrbitControls";
